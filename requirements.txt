@@ -1,8 +1,11 @@
 fastapi
 uvicorn[standard]
 pydantic[dotenv]
+pydantic-settings
 passlib[bcrypt]
 python-multipart
 sqlalchemy
 asyncpg
 alembic
+pyjwt
+cuid2
