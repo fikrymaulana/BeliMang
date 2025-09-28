@@ -7,11 +7,11 @@ from alembic import command
 app = FastAPI(title="BeliMang!", version="1.0.0")
 
 # TODO: Add feature routers here
-from .auth.router import router as auth_router
+from .admin.router import router as admin_router
 # from .users.router import users_router
 # from .files.router import files_router
 
-app.include_router(auth_router, prefix="/admin", tags=["Authentication"])
+app.include_router(admin_router, prefix="/admin", tags=["Authentication"])
 # app.include_router(users_router, prefix="/users", tags=["Users"])
 # app.include_router(files_router, prefix="/files", tags=["Files"])
 
