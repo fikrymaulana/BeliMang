@@ -8,11 +8,11 @@ app = FastAPI(title="BeliMang!", version="1.0.0")
 
 # TODO: Add feature routers here
 from .admin.router import router as admin_router
-# from .users.router import users_router
+from .users.router import router as users_router
 # from .files.router import files_router
 
 app.include_router(admin_router, prefix="/admin", tags=["Authentication"])
-# app.include_router(users_router, prefix="/users", tags=["Users"])
+app.include_router(users_router, prefix="/users", tags=["Users"])
 # app.include_router(files_router, prefix="/files", tags=["Files"])
 
 @app.exception_handler(RequestValidationError)
