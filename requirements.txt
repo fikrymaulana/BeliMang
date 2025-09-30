@@ -9,3 +9,4 @@ asyncpg
 alembic
 pyjwt
 cuid2
+minio
