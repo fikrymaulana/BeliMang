@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.security import HTTPAuthorizationCredentials
 import uuid
-from ..admin.utils import require_admin
+from ..admin.utils import require_user_type
+from ..admin.models import UserType
 from .service import minio_service
 from .schemas import ImageUploadResponse
 
@@ -10,7 +11,7 @@ router = APIRouter()
 @router.post("/image", response_model=ImageUploadResponse)
 async def upload_image(
     file: UploadFile = File(...),
-    credentials: HTTPAuthorizationCredentials = Depends(require_admin)
+    credentials: HTTPAuthorizationCredentials = Depends(require_user_type(UserType.admin))
 ):
     # Validate file type
     allowed_types = ["image/jpeg", "image/jpg"]
