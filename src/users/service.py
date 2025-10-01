@@ -42,18 +42,45 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
 
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     print(f"Authenticating user: {username}")
-    result = await db.execute(select(User).where(User.username == username, User.user_type == UserType.user))
-    user = result.scalars().first()
-    if not user:
-        print("User not found or not user")
-        raise ValueError("Invalid credentials")
-    print("User found")
-    if not verify_password(password, user.password_hash):
-        print("Password verification failed")
-        raise ValueError("Invalid credentials")
-    print("Password verified")
 
-    # Generate token
-    token = create_access_token({"sub": user.id, "type": user.user_type.value})
-    print(f"Token generated: {token[:20]}...")
-    return {"token": token}
+    # Get raw connection for prepared statements
+    connection = await db.connection()
+
+    try:
+        # Prepare the statement once (cached on DB server)
+        await connection.execute(
+            "PREPARE get_user AS "
+            "SELECT id, username, password_hash, email, type "
+            "FROM users WHERE username = $1 AND type = $2"
+        )
+
+        # Execute with parameters
+        result = await connection.execute(
+            "EXECUTE get_user (%s, %s)",
+            username, UserType.user.value
+        )
+
+        row = result.first()
+        if not row:
+            print("User not found or not user")
+            raise ValueError("Invalid credentials")
+
+        print("User found")
+
+        # Extract user data from row
+        user_id, user_username, password_hash, email, user_type = row
+
+        if not verify_password(password, password_hash):
+            print("Password verification failed")
+            raise ValueError("Invalid credentials")
+
+        print("Password verified")
+
+        # Generate token
+        token = create_access_token({"sub": user_id, "type": user_type})
+        print(f"Token generated: {token[:20]}...")
+        return {"token": token}
+
+    finally:
+        # Clean up prepared statement
+        await connection.execute("DEALLOCATE get_user")
