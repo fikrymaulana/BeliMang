@@ -43,44 +43,36 @@ async def create_admin(db: AsyncSession, admin_data: AdminRegister):
 async def authenticate_admin(db: AsyncSession, username: str, password: str):
     print(f"Authenticating admin: {username}")
 
-    # Get raw connection for prepared statements
-    connection = await db.connection()
+    # Use SQLAlchemy Core query instead of raw SQL with prepared statements
+    from sqlalchemy import text
 
-    try:
-        # Prepare the statement once (cached on DB server)
-        await connection.execute(
-            "PREPARE get_admin AS "
-            "SELECT id, username, password_hash, email, type "
-            "FROM users WHERE username = $1 AND type = $2"
-        )
+    query = text(
+        "SELECT id, username, password_hash, email, type "
+        "FROM users WHERE username = :username AND type = :user_type"
+    )
 
-        # Execute with parameters
-        result = await connection.execute(
-            "EXECUTE get_admin (%s, %s)",
-            username, UserType.admin.value
-        )
+    result = await db.execute(query, {
+        "username": username,
+        "user_type": UserType.admin.value
+    })
 
-        row = result.first()
-        if not row:
-            print("User not found or not admin")
-            raise ValueError("Invalid credentials")
+    row = result.first()
+    if not row:
+        print("User not found or not admin")
+        raise ValueError("Invalid credentials")
 
-        print("User found")
+    print("User found")
 
-        # Extract user data from row
-        user_id, user_username, password_hash, email, user_type = row
+    # Extract user data from row
+    user_id, user_username, password_hash, email, user_type = row
 
-        if not verify_password(password, password_hash):
-            print("Password verification failed")
-            raise ValueError("Invalid credentials")
+    if not verify_password(password, password_hash):
+        print("Password verification failed")
+        raise ValueError("Invalid credentials")
 
-        print("Password verified")
+    print("Password verified")
 
-        # Generate token
-        token = create_access_token({"sub": user_id, "type": user_type})
-        print(f"Token generated: {token[:20]}...")
-        return {"token": token}
-
-    finally:
-        # Clean up prepared statement
-        await connection.execute("DEALLOCATE get_admin")
+    # Generate token
+    token = create_access_token({"sub": user_id, "type": user_type})
+    print(f"Token generated: {token[:20]}...")
+    return {"token": token}
