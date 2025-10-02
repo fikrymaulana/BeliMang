@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, HttpUrl
 
@@ -17,6 +17,7 @@ class ItemResponse(BaseModel):
     price: int
     imageUrl: HttpUrl
     createdAt: str
+    quantity: Optional[int] = None
 
 
 class DetailMerchantResponse(BaseModel):

@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from ..merchants.enums import ItemProductCategoryEnum
+from ..merchants.schemas import MerchantResponse
 
 
 class LocationIn(BaseModel):
@@ -41,3 +42,16 @@ class EstimateResponse(BaseModel):
     totalPrice: int
     estimatedDeliveryTimeInMinutes: int
     calculatedEstimateId: str
+
+
+class PlaceOrderRequest(BaseModel):
+    calculatedEstimateId: str = Field(...)
+
+
+class PlaceOrderResponse(BaseModel):
+    orderId: str
+
+
+class OrderHistoryResponse(BaseModel):
+    orderId: str
+    orders: List[MerchantResponse]

@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/merchants/nearby/{lat},{long}",
+    "/nearby/{lat},{long}",
     response_model=NearbyResponse,
     status_code=status.HTTP_200_OK,
 )
