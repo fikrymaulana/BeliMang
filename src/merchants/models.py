@@ -68,9 +68,6 @@ class Item(Base):
     price: Mapped[int] = mapped_column(
         Integer, CheckConstraint("price >= 1"), nullable=False
     )
-    quantity: Mapped[int] = mapped_column(
-        Integer, CheckConstraint("quantity >= 0"), nullable=False
-    )
     image_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

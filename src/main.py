@@ -45,4 +45,3 @@ async def run_migrations():
 @app.get("/")
 def read_root():
     return {"message": "Welcome to BeliMang!"}
-

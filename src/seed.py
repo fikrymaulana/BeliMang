@@ -121,7 +121,6 @@ async def seed():
                     name=name,
                     product_category=pc_enum,
                     price=price,
-                    quantity=10,  # default stock
                     image_url=image_url,
                 )
                 session.add(it)

@@ -21,7 +21,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-
     # Create items table along with foreign key and indexes
     op.create_table(
         "items",
@@ -30,9 +29,6 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column(
             "price", sa.Integer(), sa.CheckConstraint("price > 0"), nullable=False
-        ),
-        sa.Column(
-            "quantity", sa.Integer(), nullable=False, server_default=sa.text("0")
         ),
         sa.Column(
             "product_category",
@@ -68,3 +64,4 @@ def downgrade() -> None:
     # Drop items table and indexes
     op.drop_index(op.f("ix_items_id"), table_name="items")
     op.drop_table("items")
+    op.execute("DROP TYPE item_product_category_enum")

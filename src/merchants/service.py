@@ -53,7 +53,6 @@ class MerchantService:
                     productCategory=i.product_category,
                     imageUrl=HttpUrl(i.image_url),
                     price=i.price,
-                    quantity=i.quantity,
                     createdAt=i.created_at.isoformat(),
                 )
                 for i in m.items

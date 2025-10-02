@@ -15,7 +15,6 @@ class ItemResponse(BaseModel):
     name: str
     productCategory: ItemProductCategoryEnum
     price: int
-    quantity: int
     imageUrl: HttpUrl
     createdAt: str
 
