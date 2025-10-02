@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select
 from passlib.context import CryptContext
 from ..admin.models import User, UserType
 from .schemas import UserRegister
@@ -50,38 +50,35 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     print(f"Authenticating user: {username}")
 
-    try:
-        # Use SQLAlchemy text() with bind parameters (:param)
-        stmt = text("""
-            SELECT id, username, password_hash, email, type
-            FROM users
-            WHERE username = :username AND type = :type
-        """)
+    # Use SQLAlchemy Core query instead of raw SQL with prepared statements
+    from sqlalchemy import text
 
-        result = await db.execute(
-            stmt, {"username": username, "type": UserType.user.value}
-        )
+    query = text(
+        "SELECT id, username, password_hash, email, type "
+        "FROM users WHERE username = :username AND type = :user_type"
+    )
 
-        row = result.first()
-        if not row:
-            print("User not found or not user")
-            raise ValueError("Invalid credentials")
+    result = await db.execute(
+        query, {"username": username, "user_type": UserType.user.value}
+    )
 
-        print("User found")
+    row = result.first()
+    if not row:
+        print("User not found or not user")
+        raise ValueError("Invalid credentials")
 
-        user_id, user_username, password_hash, email, user_type = row
+    print("User found")
 
-        if not verify_password(password, password_hash):
-            print("Password verification failed")
-            raise ValueError("Invalid credentials")
+    # Extract user data from row
+    user_id, user_username, password_hash, email, user_type = row
 
-        print("Password verified")
+    if not verify_password(password, password_hash):
+        print("Password verification failed")
+        raise ValueError("Invalid credentials")
 
-        # Generate token
-        token = create_access_token({"sub": user_id, "type": user_type})
-        print(f"Token generated: {token[:20]}...")
-        return {"token": token}
+    print("Password verified")
 
-    except Exception as e:
-        print(f"Auth error: {e}")
-        raise
+    # Generate token
+    token = create_access_token({"sub": user_id, "type": user_type})
+    print(f"Token generated: {token[:20]}...")
+    return {"token": token}

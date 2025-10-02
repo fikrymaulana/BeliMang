@@ -32,29 +32,28 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def require_user_type(required_type: UserType):
-    def dependency(credentials: HTTPAuthorizationCredentials = Depends(security)):
-        if credentials is None:
-            logger.warning(
-                "Authentication attempt without bearer token - returning 401"
-            )
-            raise HTTPException(status_code=401, detail="Authentication required")
+def require_user_type(
+    required_type: UserType,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    # Check if credentials are missing (no bearer token provided)
+    if credentials is None:
+        logger.warning("Authentication attempt without bearer token - returning 401")
+        raise HTTPException(status_code=401, detail="Authentication required")
 
-        logger.info(
-            f"Authentication attempt with token for user type: {credentials.credentials[:20]}..."
+    logger.info(
+        f"Authentication attempt with token for user type: {credentials.credentials[:20]}..."
+    )
+    payload = verify_token(credentials)
+    user_type = payload.get("type")
+    if user_type != required_type.value:
+        logger.warning(
+            f"User with type '{user_type}' attempted to access {required_type.value} endpoint"
         )
-        payload = verify_token(credentials)
-        user_type = payload.get("type")
-        if user_type != required_type.value:
-            logger.warning(
-                f"User with type '{user_type}' attempted to access {required_type.value} endpoint"
-            )
-            raise HTTPException(
-                status_code=403, detail=f"{required_type.value.title()} access required"
-            )
-        logger.info(
-            f"Authentication successful for user type: {user_type} accessing {required_type.value} endpoint"
+        raise HTTPException(
+            status_code=403, detail=f"{required_type.value.title()} access required"
         )
-        return payload
-
-    return dependency
+    logger.info(
+        f"Authentication successful for user type: {user_type} accessing {required_type.value} endpoint"
+    )
+    return payload
