@@ -6,17 +6,18 @@ from .schemas import ImageUploadResponse
 
 router = APIRouter()
 
+
 @router.post("/image", response_model=ImageUploadResponse)
 async def upload_image(
     file: UploadFile = File(...),
-    credentials: HTTPAuthorizationCredentials = Depends(require_admin)
+    credentials: HTTPAuthorizationCredentials = Depends(require_admin),
 ):
     # Validate file type
     allowed_types = ["image/jpeg", "image/jpg"]
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file type. Only .jpg and .jpeg files are allowed."
+            detail="Invalid file type. Only .jpg and .jpeg files are allowed.",
         )
 
     # Validate file size (10KB to 2MB)
@@ -34,14 +35,12 @@ async def upload_image(
         # Check size limits during reading
         if file_size > 2 * 1024 * 1024:  # 2MB
             raise HTTPException(
-                status_code=400,
-                detail="File size too large. Maximum size is 2MB."
+                status_code=400, detail="File size too large. Maximum size is 2MB."
             )
 
     if file_size < 10 * 1024:  # 10KB
         raise HTTPException(
-            status_code=400,
-            detail="File size too small. Minimum size is 10KB."
+            status_code=400, detail="File size too small. Minimum size is 10KB."
         )
 
     try:
@@ -49,12 +48,8 @@ async def upload_image(
         image_url = await minio_service.upload_image(file_data, "jpeg")
 
         return ImageUploadResponse(
-            message="File uploaded successfully",
-            data={"imageUrl": image_url}
+            message="File uploaded successfully", data={"imageUrl": image_url}
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to upload file: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")

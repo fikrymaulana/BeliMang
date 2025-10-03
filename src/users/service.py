@@ -1,18 +1,20 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from passlib.context import CryptContext
-from ..database import get_db
 from ..admin.models import User, UserType
 from .schemas import UserRegister
 from ..admin.utils import create_access_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password):
     return pwd_context.hash(password)
+
 
 async def create_user(db: AsyncSession, user_data: UserRegister):
     # Check if username exists
@@ -21,7 +23,11 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
         raise ValueError("Username already exists")
 
     # Check if email + user_type exists for user
-    result = await db.execute(select(User).where(User.email == user_data.email, User.user_type == UserType.user))
+    result = await db.execute(
+        select(User).where(
+            User.email == user_data.email, User.user_type == UserType.user
+        )
+    )
     if result.scalars().first():
         raise ValueError("Email already exists for user")
 
@@ -30,7 +36,7 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
         username=user_data.username,
         password_hash=hashed_password,
         email=user_data.email,
-        user_type=UserType.user
+        user_type=UserType.user,
     )
     db.add(user)
     await db.commit()
@@ -39,6 +45,7 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
     # Generate token
     token = create_access_token({"sub": user.id, "type": user.user_type.value})
     return {"token": token}
+
 
 async def authenticate_user(db: AsyncSession, username: str, password: str):
     print(f"Authenticating user: {username}")
@@ -51,10 +58,9 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
         "FROM users WHERE username = :username AND type = :user_type"
     )
 
-    result = await db.execute(query, {
-        "username": username,
-        "user_type": UserType.user.value
-    })
+    result = await db.execute(
+        query, {"username": username, "user_type": UserType.user.value}
+    )
 
     row = result.first()
     if not row:

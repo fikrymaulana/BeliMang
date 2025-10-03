@@ -3,6 +3,7 @@ uvicorn[standard]
 pydantic[dotenv]
 pydantic-settings
 passlib[bcrypt]
+bcrypt==4.3.0
 python-multipart
 sqlalchemy
 asyncpg
@@ -10,3 +11,5 @@ alembic
 pyjwt
 cuid2
 minio
+geoalchemy2
+psycopg2
