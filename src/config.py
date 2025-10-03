@@ -1,11 +1,15 @@
+import os
 import secrets
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
     app_name: str = "BeliMang!"
-    debug: bool = True
+    debug: bool = os.getenv("DEBUG", "False").lower() in ("true", "1")
     secret_key: str = Field(default_factory=lambda: secrets.token_hex(32))
     database_url: str = "sqlite:///./test.db"
     jwt_expiration_minutes: int = 60
