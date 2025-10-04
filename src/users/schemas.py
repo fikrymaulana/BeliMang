@@ -21,8 +21,8 @@ class UserRegister(BaseModel):
             raise ValueError('Password must be string')
         if not v.strip():
             raise ValueError('Password cannot be empty')
-        if len(v) < 8 or len(v) > 32:
-            raise ValueError('Password must be 8-32 characters')
+        if len(v) < 5 or len(v) > 30:
+            raise ValueError('Password must be 5-30 characters')
         return v
 
     @validator('email')
