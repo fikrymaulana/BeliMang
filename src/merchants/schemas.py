@@ -50,7 +50,6 @@ class NearbyResponse(BaseModel):
 # (HANYA DITAMBAHKAN, TANPA MENGUBAH LEAD) ====
 # ============================================
 
-from typing import Literal
 from pydantic import Field
 from datetime import datetime
 
@@ -81,14 +80,7 @@ class AdminLocationSchema(AdminBaseModel):
 
 class AdminMerchantCreate(AdminBaseModel):
     name: str = Field(..., min_length=2, max_length=30)
-    merchantCategory: Literal[
-        "SmallRestaurant",
-        "MediumRestaurant",
-        "LargeRestaurant",
-        "MerchandiseRestaurant",
-        "BoothKiosk",
-        "ConvenienceStore",
-    ]
+    merchantCategory: MerchantCategoryEnum  # ✅ pakai Enum
     imageUrl: HttpUrl
     Location: AdminLocationSchema
 
@@ -100,10 +92,10 @@ class AdminMerchantOut(AdminBaseModel):
 class AdminMerchantRead(AdminBaseModel):
     merchantId: str
     name: str
-    merchantCategory: str
+    merchantCategory: MerchantCategoryEnum  # ✅ pakai Enum, bukan str
     imageUrl: Optional[HttpUrl]
     Location: AdminLocationSchema
-    createdAt: datetime  # akan otomatis ISO 8601 oleh Pydantic
+    createdAt: datetime  # otomatis ISO 8601 oleh Pydantic
 
 
 class AdminMeta(AdminBaseModel):

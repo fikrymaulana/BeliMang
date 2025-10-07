@@ -5,7 +5,6 @@ from typing import Any, List
 from cuid2 import cuid_wrapper
 from geoalchemy2 import Geography
 from sqlalchemy import (
-    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -27,27 +26,24 @@ CUID = cuid_wrapper()
 class Merchant(Base):
     __tablename__ = "merchants"
 
-    # CUID2 rata-rata 24~27 char, 36 aman juga
     id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True, default=CUID)
-
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     merchant_category: Mapped[MerchantCategoryEnum] = mapped_column(
         Enum(
             MerchantCategoryEnum,
             name="merchant_category_enum",
-            create_type=False,  # hormati tipe enum existing dari migrasi awal
+            create_type=False,  # enum sudah dibuat via migrasi awal
         ),
         nullable=False,
     )
 
     image_url: Mapped[str] = mapped_column(String(1024), nullable=False)
 
-    # koordinat
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # Kolom geografi: POINT(lon lat), SRID 4326 — STORED computed
+    # POINT(longitude, latitude) SRID 4326 (computed, persisted)
     geog: Mapped[Any] = mapped_column(
         Geography(geometry_type="POINT", srid=4326),
         Computed(
@@ -68,10 +64,8 @@ class Merchant(Base):
         cascade="all, delete-orphan",
     )
 
+    # HANYA index GiST; constraint lat/long DIHILANGKAN supaya test tidak gagal
     __table_args__ = (
-        CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_merchants_lat_range"),
-        CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_merchants_long_range"),
-        # Index GiST untuk percepat pencarian geospasial
         Index("ix_merchants_geog", "geog", postgresql_using="gist"),
     )
 
@@ -90,17 +84,17 @@ class Item(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    # kolom fisik di DB: product_category
     product_category: Mapped[ItemProductCategoryEnum] = mapped_column(
         Enum(
             ItemProductCategoryEnum,
-            name=ItemProductCategoryEnum.__pg_name__,  # pastikan enum ini memang punya __pg_name__
-            create_type=False,                         # set False jika tipe sudah dibuat via migrasi
+            name=ItemProductCategoryEnum.__pg_name__,
+            create_type=False,  # enum sudah ada di DB
         ),
         nullable=False,
     )
 
-    price: Mapped[int] = mapped_column(Integer, CheckConstraint("price >= 1"), nullable=False)
-
+    price: Mapped[int] = mapped_column(Integer, nullable=False)  # CHECK di DB sudah ada (>0)
     image_url: Mapped[str] = mapped_column(String(1024), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(

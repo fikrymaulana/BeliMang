@@ -1,67 +1,74 @@
 # src/merchants/items/repository.py
+from __future__ import annotations
 from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy import text
-from sqlalchemy.orm import Session
-from cuid2 import cuid_wrapper  # ← generate id sendiri
+from sqlalchemy.ext.asyncio import AsyncSession
+from cuid2 import cuid_wrapper
 
-CUID = cuid_wrapper()  # default panjang aman untuk varchar(36)
+CUID = cuid_wrapper()
+VALID_ITEM_CATEGORIES = {"Beverage", "Food", "Snack", "Condiments", "Additions"}
 
-# -----------------------------
-# Helpers
-# -----------------------------
-def merchant_exists(db: Session, merchant_id: str) -> bool:
-    row = db.execute(
-        text("SELECT 1 FROM merchants WHERE id = :id"),
-        {"id": merchant_id},
-    ).scalar()
-    return row is not None
+async def merchant_exists(db: AsyncSession, merchant_id: str) -> bool:
+    res = await db.execute(text("SELECT 1 FROM merchants WHERE id = :id"), {"id": merchant_id})
+    return res.scalar() is not None
 
-
-def create_item(
-    db: Session,
+async def create_item(
+    db: AsyncSession,
     merchant_id: str,
     data: Dict[str, Any],
 ) -> str:
-    """
-    Insert ke tabel items yang SUDAH ADA (dari Alembic).
-    """
-    # Ambil dari camelCase ATAU snake_case
-    product_category = data.get("productCategory") or data.get("product_category")
-    if hasattr(product_category, "value"):
-        product_category = product_category.value
+    # --- normalisasi + validasi minimal ---
+    name = data.get("name")
+    if not name or not isinstance(name, str):
+        raise ValueError("name is required")
 
-    image_url = data.get("imageUrl") or data.get("image_url") or ""
-    if image_url is not None:
-        image_url = str(image_url)
+    try:
+        price = int(data.get("price"))
+    except Exception:
+        raise ValueError("price must be an integer")
+    if price <= 0:
+        raise ValueError("price must be > 0")
 
-    price = int(data["price"])  # kolom DB integer & CHECK > 0
+    category = data.get("category") or data.get("productCategory") or data.get("product_category")
+    if hasattr(category, "value"):
+        category = category.value
+    if category not in VALID_ITEM_CATEGORIES:
+        raise ValueError(f"productCategory must be one of {sorted(VALID_ITEM_CATEGORIES)}")
 
-    item_id = CUID()  # ← generate id di app layer (karena DB tidak punya default)
+    image_url = (data.get("imageUrl") or data.get("image_url") or "")
+    image_url = str(image_url)
 
-    params = {
-        "id": item_id,
-        "merchant_id": merchant_id,
-        "name": data["name"],
-        "price": price,
-        "product_category": product_category,
-        "image_url": image_url,
-    }
+    item_id = CUID()
 
-    row = db.execute(
-        text("""
-            INSERT INTO items (id, merchant_id, name, price, product_category, image_url)
-            VALUES (:id, :merchant_id, :name, :price, :product_category, :image_url)
-            RETURNING id
-        """),
-        params,
-    ).fetchone()
+    try:
+        row = (
+            await db.execute(
+                text(
+                    """
+                    INSERT INTO items (id, merchant_id, name, price, product_category, image_url)
+                    VALUES (:id, :merchant_id, :name, :price, :product_category, :image_url)
+                    RETURNING id
+                    """
+                ),
+                {
+                    "id": item_id,
+                    "merchant_id": merchant_id,
+                    "name": name,
+                    "price": price,
+                    "product_category": category,
+                    "image_url": image_url,
+                },
+            )
+        ).fetchone()
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
-    db.commit()
     return row[0]
 
-
-def list_items(
-    db: Session,
+async def list_items(
+    db: AsyncSession,
     *,
     merchant_id: str,
     item_id: Optional[str] = None,
@@ -71,9 +78,6 @@ def list_items(
     limit: int = 5,
     offset: int = 0,
 ) -> Tuple[List[Dict[str, Any]], int]:
-    """
-    Ambil items milik merchant dengan filter optional.
-    """
     where = ["merchant_id = :merchant_id"]
     params: Dict[str, Any] = {"merchant_id": merchant_id, "limit": limit, "offset": offset}
 
@@ -84,25 +88,33 @@ def list_items(
     if category:
         where.append("product_category = :category"); params["category"] = category
 
-    order = "created_at ASC" if created_at == "asc" else "created_at DESC"
     where_sql = " AND ".join(where)
+    order = "created_at ASC" if created_at == "asc" else "created_at DESC"
 
-    total = db.execute(
-        text(f"SELECT COUNT(*) FROM items WHERE {where_sql}"),
-        params,
+    total = (
+        await db.execute(text(f"SELECT COUNT(*) FROM items WHERE {where_sql}"), params)
     ).scalar() or 0
 
-    rows = db.execute(
-        text(f"""
-            SELECT id, merchant_id, name, price,
-                   product_category AS "productCategory",
-                   image_url AS "imageUrl", created_at
-            FROM items
-            WHERE {where_sql}
-            ORDER BY {order}
-            LIMIT :limit OFFSET :offset
-        """),
-        params,
+    rows = (
+        await db.execute(
+            text(
+                f"""
+                SELECT
+                  id,
+                  merchant_id,
+                  name,
+                  price,
+                  product_category AS category,   -- alias utk schema (productCategory)
+                  NULLIF(image_url, '') AS image_url,  -- kosong -> null
+                  created_at
+                FROM items
+                WHERE {where_sql}
+                ORDER BY {order}
+                LIMIT :limit OFFSET :offset
+                """
+            ),
+            params,
+        )
     ).mappings().all()
 
     data = [dict(r) for r in rows]

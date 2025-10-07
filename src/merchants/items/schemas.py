@@ -1,26 +1,27 @@
-# src/merchants/items/schemas.py
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices, HttpUrl
 
-# Enum kategori produk
-ItemCategory = Literal["Beverage", "Food", "Snack", "Condiments", "Additions"]
+# Import enum yang sudah didefinisikan di src/merchants/enum.py
+from src.merchants.enums import ItemProductCategoryEnum
+
 
 # ======================
 # Request body (Admin)
 # ======================
 class ItemCreate(BaseModel):
     """Schema untuk menambah item baru."""
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")  # tolak field asing (sku, description, dll)
 
     name: str = Field(..., min_length=2, max_length=30)
-    category: ItemCategory = Field(
+    # internal field = category; input bisa "productCategory"/"category"; output pakai "productCategory"
+    category: ItemProductCategoryEnum = Field(
         ...,
         validation_alias=AliasChoices("productCategory", "category"),
         serialization_alias="productCategory",
     )
     price: int = Field(..., ge=1)
-    imageUrl: HttpUrl
+    imageUrl: HttpUrl  # wajib di request
 
 
 # ======================
@@ -44,9 +45,11 @@ class ItemRow(BaseModel):
 
     itemId: str = Field(validation_alias="id")
     name: str
-    productCategory: ItemCategory = Field(validation_alias="category")
-    price: Optional[float] = None
-    imageUrl: Optional[HttpUrl] = None
+    # di ORM kita expose attribute 'category' (kolom fisik: product_category)
+    productCategory: ItemProductCategoryEnum = Field(validation_alias="category")
+    price: int  # DB: integer NOT NULL
+    # DB bisa simpan '' (empty string). Pakai Optional[str] agar tidak gagal validasi.
+    imageUrl: Optional[str] = Field(default=None, validation_alias="image_url")
     createdAt: datetime = Field(validation_alias="created_at")
 
 
