@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session as SyncSession
 
 # ====== AUTH ======
-from src.admin.utils import require_admin, verify_token
+from src.admin.utils import require_admin  # ✅ hanya pakai require_admin
 
-# ====== DATABASE: async-only dari src/database.py ======
+# ====== DATABASE ======
 from src.database import get_db  # AsyncSession
 
 # ====== SERVICE ======
@@ -22,42 +22,39 @@ from .schemas import (
     NearbyResponse,
 )
 
-# ====== ITEMS SUB-ROUTER (sudah async) ======
+# ====== ITEMS SUB-ROUTER ======
 from src.merchants.items.router import router as items_router
 
 
-# util kecil untuk menjalankan kode ORM sync di atas AsyncSession
+# ================================================================
+# Helper: jalankan fungsi sync di atas AsyncSession
+# ================================================================
 T = TypeVar("T")
 async def _run_with_sync_session(async_sess: AsyncSession, fn: Callable[[SyncSession], T]) -> T:
     def _inner(sync_conn):
-        # buat SyncSession yang bound ke connection milik AsyncSession
         with SyncSession(bind=sync_conn) as s:
             return fn(s)
     return await async_sess.run_sync(_inner)
 
 
-# =============================================================================
-# ADMIN ROUTER (/admin/merchants/*) — Wajib Admin
-# =============================================================================
+# ================================================================
+# ADMIN ROUTER (/admin/merchants/*)
+# ================================================================
 admin_router = APIRouter(
     prefix="/admin/merchants",
     tags=["Admin - Merchants"],
-    dependencies=[Depends(require_admin)],   # semua endpoint admin wajib admin
+    dependencies=[Depends(require_admin)],   # 🔒 semua endpoint wajib admin
 )
 
+
 @admin_router.post(
-    "",  # penting: "" bukan "/"
+    "",
     response_model=MerchantOut,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        400: {"description": "Bad Request – validation failed"},
-        401: {"description": "Unauthorized – missing or invalid token"},
-        403: {"description": "Admin access required"},
-    },
 )
 async def add_merchant(
     payload: MerchantCreate,
-    session: AsyncSession = Depends(get_db),   # AsyncSession dari src/database.py
+    session: AsyncSession = Depends(get_db),
 ):
     """Tambah merchant baru (ADMIN)."""
     if not payload.name or not payload.imageUrl:
@@ -68,8 +65,6 @@ async def add_merchant(
 
     try:
         m = await _run_with_sync_session(session, _op)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -86,14 +81,11 @@ VALID_CATEGORIES = {
 }
 VALID_CREATED_AT_SORT = {"asc", "desc"}
 
+
 @admin_router.get(
-    "",  # penting: "" bukan "/"
+    "",
     response_model=MerchantListResponse,
     status_code=status.HTTP_200_OK,
-    responses={
-        401: {"description": "Unauthorized – missing or invalid token"},
-        403: {"description": "Admin access required"},
-    },
 )
 async def list_merchants(
     merchantId: Optional[str] = None,
@@ -102,7 +94,7 @@ async def list_merchants(
     name: Optional[str] = None,
     merchantCategory: Optional[str] = None,
     createdAt: Optional[str] = None,
-    session: AsyncSession = Depends(get_db),   # AsyncSession dari src/database.py
+    session: AsyncSession = Depends(get_db),
 ):
     """List merchants (ADMIN)."""
     if merchantCategory and merchantCategory not in VALID_CATEGORIES:
@@ -121,16 +113,13 @@ async def list_merchants(
             offset=offset,
         )
 
-    try:
-        items, total = await _run_with_sync_session(session, _op)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+    items, total = await _run_with_sync_session(session, _op)
     return {"data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
 
 
-# === NEST ITEMS: /admin/merchants/{merchant_id}/items =========================
-# items_router sendiri sudah admin-guard; tambahkan default responses
+# ================================================================
+# NESTED ITEMS ROUTER (/admin/merchants/{merchant_id}/items)
+# ================================================================
 items_router.responses = {
     400: {"description": "Bad Request – validation failed"},
     401: {"description": "Unauthorized – missing or invalid token"},
@@ -145,10 +134,14 @@ admin_router.include_router(
 )
 
 
-# =============================================================================
-# NEARBY ROUTER (tetap async)
-# =============================================================================
-nearby_router = APIRouter(tags=["Merchants"])
+# ================================================================
+# NEARBY ROUTER (Juga wajib admin)
+# ================================================================
+nearby_router = APIRouter(
+    prefix="/merchants",
+    tags=["Merchants"],
+    dependencies=[Depends(require_admin)],  # 🔒 Sekarang wajib admin juga
+)
 
 @nearby_router.get(
     "/nearby/{lat},{long}",
@@ -163,17 +156,17 @@ async def get_nearby(
     offset: int = Query(0),
     name: Optional[str] = Query(None),
     merchantCategory: Optional[str] = Query(None),
-    session: AsyncSession = Depends(get_db),   # AsyncSession
-    _=Depends(verify_token),  # kalau endpoint ini public, hapus dependensi ini
+    session: AsyncSession = Depends(get_db),
 ):
+    """Get nearby merchants (ADMIN)."""
     return await MerchantService.get_nearby_merchants(
         session, lat, long, merchantId, merchantCategory, name, limit, offset
     )
 
 
-# =============================================================================
+# ================================================================
 # ROOT ROUTER EXPORT
-# =============================================================================
+# ================================================================
 router = APIRouter()
 router.include_router(admin_router)
 router.include_router(nearby_router)
