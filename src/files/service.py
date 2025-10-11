@@ -1,8 +1,11 @@
 import uuid
 from io import BytesIO
+
 from minio import Minio
 from minio.error import S3Error
+
 from ..config import settings
+
 
 class MinIOService:
     def __init__(self):
@@ -10,7 +13,7 @@ class MinIOService:
             settings.minio_public_url,
             access_key=settings.minio_access_key,
             secret_key=settings.minio_secret_key,
-            secure=False  # Set to True if using HTTPS
+            secure=False,  # Set to True if using HTTPS
         )
         self.bucket_name = settings.minio_bucket
 
@@ -42,7 +45,7 @@ class MinIOService:
                 filename,
                 file_buffer,
                 length=len(file_data),
-                content_type=f"image/{file_extension}"
+                content_type=f"image/{file_extension}",
             )
 
             # Return the public URL
@@ -52,5 +55,7 @@ class MinIOService:
             print(f"Error uploading to MinIO: {e}")
             raise
 
+
 # Global MinIO service instance
 minio_service = MinIOService()
+

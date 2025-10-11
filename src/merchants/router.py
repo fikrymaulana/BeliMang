@@ -1,70 +1,42 @@
-# src/merchants/router.py
-from typing import Optional, Callable, TypeVar
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Path, Query, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session as SyncSession
 
-# ====== AUTH ======
-from src.admin.utils import require_admin  # ✅ hanya pakai require_admin
+from src.admin.utils import require_admin
+from src.database import get_db
+from src.users.utils import require_user
 
-# ====== DATABASE ======
-from src.database import get_db  # AsyncSession
-
-# ====== SERVICE ======
-from .service import MerchantService
-
-# ====== SCHEMAS ======
 from .schemas import (
     AdminMerchantCreate as MerchantCreate,
-    AdminMerchantOut as MerchantOut,
+)
+from .schemas import (
     AdminMerchantListResponse as MerchantListResponse,
+)
+from .schemas import (
+    AdminMerchantOut as MerchantOut,
+)
+from .schemas import (
     NearbyResponse,
 )
+from .service import MerchantService
 
-# ====== ITEMS SUB-ROUTER ======
-from src.merchants.items.router import router as items_router
-
-
-# ================================================================
-# Helper: jalankan fungsi sync di atas AsyncSession
-# ================================================================
-T = TypeVar("T")
-async def _run_with_sync_session(async_sess: AsyncSession, fn: Callable[[SyncSession], T]) -> T:
-    def _inner(sync_conn):
-        with SyncSession(bind=sync_conn) as s:
-            return fn(s)
-    return await async_sess.run_sync(_inner)
+admin_router = APIRouter(dependencies=[Depends(require_admin)])
 
 
-# ================================================================
-# ADMIN ROUTER (/admin/merchants/*)
-# ================================================================
-admin_router = APIRouter(
-    prefix="/admin/merchants",
-    tags=["Admin - Merchants"],
-    dependencies=[Depends(require_admin)],   # 🔒 semua endpoint wajib admin
-)
-
-
-@admin_router.post(
-    "",
-    response_model=MerchantOut,
-    status_code=status.HTTP_201_CREATED,
-)
+# POST /admin/merchants
+@admin_router.post("", response_model=MerchantOut, status_code=status.HTTP_201_CREATED)
 async def add_merchant(
     payload: MerchantCreate,
-    session: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Tambah merchant baru (ADMIN)."""
     if not payload.name or not payload.imageUrl:
-        raise HTTPException(status_code=400, detail="Missing required fields: name or imageUrl")
-
-    def _op(sync_db: SyncSession):
-        return MerchantService.create_merchant(sync_db, payload)
+        raise HTTPException(
+            status_code=400, detail="Missing required fields: name or imageUrl"
+        )
 
     try:
-        m = await _run_with_sync_session(session, _op)
+        m = await MerchantService.create_merchant(db, payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -82,10 +54,9 @@ VALID_CATEGORIES = {
 VALID_CREATED_AT_SORT = {"asc", "desc"}
 
 
+# GET /admin/merchants
 @admin_router.get(
-    "",
-    response_model=MerchantListResponse,
-    status_code=status.HTTP_200_OK,
+    "", response_model=MerchantListResponse, status_code=status.HTTP_200_OK
 )
 async def list_merchants(
     merchantId: Optional[str] = None,
@@ -94,55 +65,29 @@ async def list_merchants(
     name: Optional[str] = None,
     merchantCategory: Optional[str] = None,
     createdAt: Optional[str] = None,
-    session: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    """List merchants (ADMIN)."""
     if merchantCategory and merchantCategory not in VALID_CATEGORIES:
         return {"data": [], "meta": {"limit": limit, "offset": offset, "total": 0}}
 
     sort_dir = createdAt if createdAt in VALID_CREATED_AT_SORT else None
 
-    def _op(sync_db: SyncSession):
-        return MerchantService.list_merchants(
-            db=sync_db,
-            merchant_id=merchantId,
-            name=name,
-            category=merchantCategory,
-            sort_created_at=sort_dir,
-            limit=limit,
-            offset=offset,
-        )
-
-    items, total = await _run_with_sync_session(session, _op)
+    items, total = await MerchantService.list_merchants(
+        db=db,
+        merchant_id=merchantId,
+        name=name,
+        category=merchantCategory,
+        sort_created_at=sort_dir,
+        limit=limit,
+        offset=offset,
+    )
     return {"data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
 
 
-# ================================================================
-# NESTED ITEMS ROUTER (/admin/merchants/{merchant_id}/items)
-# ================================================================
-items_router.responses = {
-    400: {"description": "Bad Request – validation failed"},
-    401: {"description": "Unauthorized – missing or invalid token"},
-    403: {"description": "Admin access required"},
-    404: {"description": "Merchant not found"},
-}
-admin_router.include_router(
-    items_router,
-    prefix="/{merchant_id}/items",
-    tags=["Admin - Items"],
-    dependencies=[Depends(require_admin)],
-)
+nearby_router = APIRouter(dependencies=[Depends(require_user)])
 
 
-# ================================================================
-# NEARBY ROUTER (Juga wajib admin)
-# ================================================================
-nearby_router = APIRouter(
-    prefix="/merchants",
-    tags=["Merchants"],
-    dependencies=[Depends(require_admin)],  # 🔒 Sekarang wajib admin juga
-)
-
+# GET /merchants/nearby/{lat},{long}
 @nearby_router.get(
     "/nearby/{lat},{long}",
     response_model=NearbyResponse,
@@ -156,17 +101,15 @@ async def get_nearby(
     offset: int = Query(0),
     name: Optional[str] = Query(None),
     merchantCategory: Optional[str] = Query(None),
-    session: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get nearby merchants (ADMIN)."""
     return await MerchantService.get_nearby_merchants(
-        session, lat, long, merchantId, merchantCategory, name, limit, offset
+        db,
+        lat,
+        long,
+        merchantId,
+        merchantCategory,
+        name,
+        limit,
+        offset,
     )
-
-
-# ================================================================
-# ROOT ROUTER EXPORT
-# ================================================================
-router = APIRouter()
-router.include_router(admin_router)
-router.include_router(nearby_router)

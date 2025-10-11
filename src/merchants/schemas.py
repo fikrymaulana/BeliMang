@@ -1,12 +1,13 @@
-# src/merchants/schemas.py
+from datetime import datetime
+from typing import Annotated, List, Optional
 
-# =========================
-# ====== KODE LEAD ========
-# (TIDAK DIUBAH SAMA SEKALI)
-# =========================
-
-from typing import List, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import (
+    BaseModel,
+    Field,
+    HttpUrl,
+    StrictFloat,
+    StringConstraints,
+)
 
 from .enums import ItemProductCategoryEnum, MerchantCategoryEnum
 
@@ -45,17 +46,10 @@ class NearbyResponse(BaseModel):
     meta: dict
 
 
-# ============================================
-# ====== TAMBAHAN: SKEMA ADMIN MILIKMU =======
-# (HANYA DITAMBAHKAN, TANPA MENGUBAH LEAD) ====
-# ============================================
-
-from pydantic import Field
-from datetime import datetime
-
 # Dukungan Pydantic v2 & v1 untuk from_attributes/orm_mode
 try:
     from pydantic import ConfigDict  # Pydantic v2
+
     _IS_PYDANTIC_V2 = True
 except Exception:
     _IS_PYDANTIC_V2 = False
@@ -66,23 +60,28 @@ class AdminBaseModel(BaseModel):
     Base model untuk skema Admin* agar bisa parse dari SQLAlchemy object.
     Kompatibel Pydantic v2 (from_attributes) & v1 (orm_mode).
     """
+
     if _IS_PYDANTIC_V2:
         model_config = ConfigDict(from_attributes=True)  # type: ignore[name-defined]
     else:  # Pydantic v1 fallback
+
         class Config:
             orm_mode = True
 
 
 class AdminLocationSchema(AdminBaseModel):
-    Lat: float = Field(..., description="Latitude")
-    Long: float = Field(..., description="Longitude")
+    lat: StrictFloat = Field(..., description="Latitude")
+    long: StrictFloat = Field(..., description="Longitude")
 
 
 class AdminMerchantCreate(AdminBaseModel):
     name: str = Field(..., min_length=2, max_length=30)
-    merchantCategory: MerchantCategoryEnum  # ✅ pakai Enum
-    imageUrl: HttpUrl
-    Location: AdminLocationSchema
+    merchantCategory: MerchantCategoryEnum
+    imageUrl: Annotated[
+        str,
+        StringConstraints(pattern=r"^https?://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/.*)?$"),
+    ]
+    location: AdminLocationSchema
 
 
 class AdminMerchantOut(AdminBaseModel):
@@ -92,9 +91,9 @@ class AdminMerchantOut(AdminBaseModel):
 class AdminMerchantRead(AdminBaseModel):
     merchantId: str
     name: str
-    merchantCategory: MerchantCategoryEnum  # ✅ pakai Enum, bukan str
+    merchantCategory: MerchantCategoryEnum
     imageUrl: Optional[HttpUrl]
-    Location: AdminLocationSchema
+    location: AdminLocationSchema
     createdAt: datetime  # otomatis ISO 8601 oleh Pydantic
 
 

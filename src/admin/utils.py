@@ -1,8 +1,10 @@
-import jwt
 import logging
 from datetime import datetime, timedelta
-from fastapi import HTTPException, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+import jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from ..config import settings
 from .models import UserType
 

@@ -1,9 +1,10 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..admin.models import User, UserType
-from .schemas import UserRegister
 from ..admin.utils import create_access_token
+from .schemas import UserRegister
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

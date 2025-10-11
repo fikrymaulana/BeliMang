@@ -1,9 +1,11 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, List
 from enum import Enum as PyEnum
-from sqlalchemy import String, DateTime, Enum, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING, List
+
 from cuid2 import cuid_wrapper
+from sqlalchemy import DateTime, Enum, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ..database import Base
 
 cuid_generate = cuid_wrapper()
