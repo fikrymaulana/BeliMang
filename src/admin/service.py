@@ -1,18 +1,21 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from passlib.context import CryptContext
-from ..database import get_db
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from .models import User, UserType
 from .schemas import AdminRegister
 from .utils import create_access_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password):
     return pwd_context.hash(password)
+
 
 async def create_admin(db: AsyncSession, admin_data: AdminRegister):
     # Check if username exists
@@ -21,7 +24,11 @@ async def create_admin(db: AsyncSession, admin_data: AdminRegister):
         raise ValueError("Username already exists")
 
     # Check if email + user_type exists for admin
-    result = await db.execute(select(User).where(User.email == admin_data.email, User.user_type == UserType.admin))
+    result = await db.execute(
+        select(User).where(
+            User.email == admin_data.email, User.user_type == UserType.admin
+        )
+    )
     if result.scalars().first():
         raise ValueError("Email already exists for admin")
 
@@ -30,7 +37,7 @@ async def create_admin(db: AsyncSession, admin_data: AdminRegister):
         username=admin_data.username,
         password_hash=hashed_password,
         email=admin_data.email,
-        user_type=UserType.admin
+        user_type=UserType.admin,
     )
     db.add(user)
     await db.commit()
@@ -39,6 +46,7 @@ async def create_admin(db: AsyncSession, admin_data: AdminRegister):
     # Generate token
     token = create_access_token({"sub": user.id, "type": user.user_type.value})
     return {"token": token}
+
 
 async def authenticate_admin(db: AsyncSession, username: str, password: str):
     print(f"Authenticating admin: {username}")
@@ -51,10 +59,9 @@ async def authenticate_admin(db: AsyncSession, username: str, password: str):
         "FROM users WHERE username = :username AND type = :user_type"
     )
 
-    result = await db.execute(query, {
-        "username": username,
-        "user_type": UserType.admin.value
-    })
+    result = await db.execute(
+        query, {"username": username, "user_type": UserType.admin.value}
+    )
 
     row = result.first()
     if not row:
@@ -76,3 +83,4 @@ async def authenticate_admin(db: AsyncSession, username: str, password: str):
     token = create_access_token({"sub": user_id, "type": user_type})
     print(f"Token generated: {token[:20]}...")
     return {"token": token}
+

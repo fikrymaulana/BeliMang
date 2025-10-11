@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials
+
 from ..admin.utils import require_admin
-from .service import minio_service
 from .schemas import ImageUploadResponse
+from .service import minio_service
 
 router = APIRouter()
 

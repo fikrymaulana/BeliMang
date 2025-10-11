@@ -1,13 +1,23 @@
 from cuid2 import cuid_wrapper
 from sqlalchemy import (
-    Column, String, DateTime, ForeignKey, Text, Integer,
-    Enum as SQLEnum, CheckConstraint
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.sql import func
-from src.merchants.database import Base
-from src.merchants.enum import ItemProductCategoryEnum
+
+from ...database import Base
+from ..enums import ItemProductCategoryEnum
 
 CUID = cuid_wrapper()
+
 
 class Item(Base):
     __tablename__ = "items"
@@ -27,8 +37,8 @@ class Item(Base):
         "product_category",
         SQLEnum(
             ItemProductCategoryEnum,
-            name=ItemProductCategoryEnum.__pg_name__,  # "item_product_category_enum"
-            create_type=False,  # tipe sudah ada di DB
+            name=ItemProductCategoryEnum.__pg_name__,
+            create_type=False,
         ),
         nullable=False,
         index=True,

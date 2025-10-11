@@ -1,19 +1,18 @@
-# src/merchants/models.py
 from datetime import datetime
 from typing import Any, List
 
 from cuid2 import cuid_wrapper
 from geoalchemy2 import Geography
 from sqlalchemy import (
+    Computed,
     DateTime,
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     func,
-    Computed,
-    Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,14 +25,16 @@ CUID = cuid_wrapper()
 class Merchant(Base):
     __tablename__ = "merchants"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True, default=CUID)
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, index=True, default=CUID
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     merchant_category: Mapped[MerchantCategoryEnum] = mapped_column(
         Enum(
             MerchantCategoryEnum,
             name="merchant_category_enum",
-            create_type=False,  # enum sudah dibuat via migrasi awal
+            create_type=False,
         ),
         nullable=False,
     )
@@ -43,7 +44,6 @@ class Merchant(Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # POINT(longitude, latitude) SRID 4326 (computed, persisted)
     geog: Mapped[Any] = mapped_column(
         Geography(geometry_type="POINT", srid=4326),
         Computed(
@@ -64,16 +64,15 @@ class Merchant(Base):
         cascade="all, delete-orphan",
     )
 
-    # HANYA index GiST; constraint lat/long DIHILANGKAN supaya test tidak gagal
-    __table_args__ = (
-        Index("ix_merchants_geog", "geog", postgresql_using="gist"),
-    )
+    __table_args__ = (Index("ix_merchants_geog", "geog", postgresql_using="gist"),)
 
 
 class Item(Base):
     __tablename__ = "items"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True, default=CUID)
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, index=True, default=CUID
+    )
 
     merchant_id: Mapped[str] = mapped_column(
         String(36),
@@ -84,17 +83,16 @@ class Item(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # kolom fisik di DB: product_category
     product_category: Mapped[ItemProductCategoryEnum] = mapped_column(
         Enum(
             ItemProductCategoryEnum,
             name=ItemProductCategoryEnum.__pg_name__,
-            create_type=False,  # enum sudah ada di DB
+            create_type=False,
         ),
         nullable=False,
     )
 
-    price: Mapped[int] = mapped_column(Integer, nullable=False)  # CHECK di DB sudah ada (>0)
+    price: Mapped[int] = mapped_column(Integer, nullable=False)
     image_url: Mapped[str] = mapped_column(String(1024), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(

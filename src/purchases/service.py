@@ -134,7 +134,7 @@ class PurchaseService:
             )
 
         # Get merchants and items
-        merchant_ids = [o.merchantId for o in body.orders]
+        merchant_ids = list(set(o.merchantId for o in body.orders))
         merchants: Dict[str, Merchant] = await MerchantRepository.get_merchants_by_ids(
             session, merchant_ids
         )
@@ -213,8 +213,9 @@ class PurchaseService:
             est_minutes=est_minutes,
         )
 
-        # Create estimate items rows
-        rows = []
+        # Create estimate items rows - aggregate by item_id
+        item_aggregates: Dict[str, EstimateItem] = {}
+
         for o in body.orders:
             items_map: Dict[
                 str, Item
@@ -223,8 +224,11 @@ class PurchaseService:
             )
             for it in o.items:
                 item: Item = items_map[it.itemId]
-                rows.append(
-                    EstimateItem(
+
+                if it.itemId in item_aggregates:
+                    item_aggregates[it.itemId].quantity += it.quantity
+                else:
+                    item_aggregates[it.itemId] = EstimateItem(
                         estimate_id=estimate_id,
                         item_id=item.id,
                         merchant_id=o.merchantId,
@@ -234,7 +238,8 @@ class PurchaseService:
                         product_category=item.product_category,
                         image_url=item.image_url,
                     )
-                )
+
+        rows = list(item_aggregates.values())
         await PurchaseRepository.bulk_insert_estimate_items(session, rows)
         await session.commit()
 

@@ -3,14 +3,14 @@ import asyncio
 from cuid2 import cuid_wrapper
 from dotenv import load_dotenv
 from geoalchemy2 import WKTElement
-from sqlalchemy import text
 from passlib.context import CryptContext
+from sqlalchemy import text
 
-from .database import async_session
-from .merchants.enums import MerchantCategoryEnum, ItemProductCategoryEnum
-from .merchants.models import Merchant, Item
-from .admin.models import User, UserType
-from .purchases.models import Order  # don't remove, for relationship purposes
+from ..admin.models import User, UserType
+from ..database import async_session
+from ..merchants.enums import ItemProductCategoryEnum, MerchantCategoryEnum
+from ..merchants.models import Item, Merchant
+from ..purchases.models import Order  # don't remove, for relationship purposes
 
 load_dotenv()
 
@@ -300,21 +300,21 @@ async def seed():
         await session.execute(text("DELETE FROM items"))
         await session.execute(text("DELETE FROM merchants"))
         usernames = tuple(u["username"] for u in USERS)
-        await session.execute(
-            text("DELETE FROM users WHERE username = ANY(:usernames)"),
-            {"usernames": list(usernames)},
-        )
-
-        # ============= USERS =============
-        for u in USERS:
-            user = User(
-                id=cuid(),
-                username=u["username"],
-                email=u["email"],
-                password_hash=pwd_context.hash(u["password"]),
-            )
-            session.add(user)
-        await session.commit()
+        #         await session.execute(
+        #             text("DELETE FROM users WHERE username = ANY(:usernames)"),
+        #             {"usernames": list(usernames)},
+        #         )
+        #
+        #         # ============= USERS =============
+        #         for u in USERS:
+        #             user = User(
+        #                 id=cuid(),
+        #                 username=u["username"],
+        #                 email=u["email"],
+        #                 password_hash=pwd_context.hash(u["password"]),
+        #             )
+        #             session.add(user)
+        #         await session.commit()
 
         # ============= MERCHANTS =========
         merchant_id_by_name: dict[str, str] = {}
