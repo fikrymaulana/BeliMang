@@ -63,7 +63,6 @@ class MerchantService:
 
         db.add(m)
         await db.commit()
-        await db.refresh(m)
         return m
 
     @staticmethod

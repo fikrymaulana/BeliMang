@@ -33,7 +33,7 @@ class MerchantRepository:
             # Subquery to get merchant IDs that match the name filter
             subq = (
                 select(Merchant.id)
-                .join(Merchant.items)
+                .outerjoin(Merchant.items)
                 .where(
                     or_(Merchant.name.ilike(f"%{name}%"), Item.name.ilike(f"%{name}%"))
                 )
