@@ -123,8 +123,8 @@ spec:
   selector:
     app: belimang-app
   ports:
-  - port: 8000
-    targetPort: 8000
+  - port: 8888
+    targetPort: 8888
   type: ClusterIP
 ---
 apiVersion: v1
@@ -136,10 +136,7 @@ spec:
   selector:
     app: belimang-app
   ports:
-  - name: http
-    port: 80
+  - port: 8000
     targetPort: 8000
-  - name: https
-    port: 443
-    targetPort: 8000
+    nodePort: 31800
   type: LoadBalancer
