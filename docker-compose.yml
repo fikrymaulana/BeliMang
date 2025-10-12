@@ -15,8 +15,8 @@ services:
     image: postgis/postgis:15-3.3
     environment:
       POSTGRES_DB: belimang
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: snakeoadmin
+      POSTGRES_PASSWORD: snakeoadmin
     ports:
       - "5432:5432"
     volumes:

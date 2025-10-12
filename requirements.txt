@@ -12,4 +12,4 @@ pyjwt
 cuid2
 minio
 geoalchemy2
-psycopg2
+psycopg2-binary
