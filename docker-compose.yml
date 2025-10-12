@@ -9,3 +9,18 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     volumes:
       - .:/app
+    depends_on:
+      - db
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: belimang
+      POSTGRES_USER: snakeoadmin
+      POSTGRES_PASSWORD: snakeoadmin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

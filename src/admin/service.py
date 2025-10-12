@@ -2,9 +2,9 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..admin.models import User, UserType
-from ..admin.utils import create_access_token
-from .schemas import UserRegister
+from .models import User, UserType
+from .schemas import AdminRegister
+from .utils import create_access_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -17,27 +17,27 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-async def create_user(db: AsyncSession, user_data: UserRegister):
+async def create_admin(db: AsyncSession, admin_data: AdminRegister):
     # Check if username exists
-    result = await db.execute(select(User).where(User.username == user_data.username))
+    result = await db.execute(select(User).where(User.username == admin_data.username))
     if result.scalars().first():
         raise ValueError("Username already exists")
 
-    # Check if email + user_type exists for user
+    # Check if email + user_type exists for admin
     result = await db.execute(
         select(User).where(
-            User.email == user_data.email, User.user_type == UserType.user
+            User.email == admin_data.email, User.user_type == UserType.admin
         )
     )
     if result.scalars().first():
-        raise ValueError("Email already exists for user")
+        raise ValueError("Email already exists for admin")
 
-    hashed_password = get_password_hash(user_data.password)
+    hashed_password = get_password_hash(admin_data.password)
     user = User(
-        username=user_data.username,
+        username=admin_data.username,
         password_hash=hashed_password,
-        email=user_data.email,
-        user_type=UserType.user,
+        email=admin_data.email,
+        user_type=UserType.admin,
     )
     db.add(user)
     await db.commit()
@@ -48,8 +48,8 @@ async def create_user(db: AsyncSession, user_data: UserRegister):
     return {"token": token}
 
 
-async def authenticate_user(db: AsyncSession, username: str, password: str):
-    print(f"Authenticating user: {username}")
+async def authenticate_admin(db: AsyncSession, username: str, password: str):
+    print(f"Authenticating admin: {username}")
 
     # Use SQLAlchemy Core query instead of raw SQL with prepared statements
     from sqlalchemy import text
@@ -60,12 +60,12 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
     )
 
     result = await db.execute(
-        query, {"username": username, "user_type": UserType.user.value}
+        query, {"username": username, "user_type": UserType.admin.value}
     )
 
     row = result.first()
     if not row:
-        print("User not found or not user")
+        print("User not found or not admin")
         raise ValueError("Invalid credentials")
 
     print("User found")
@@ -83,3 +83,4 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
     token = create_access_token({"sub": user_id, "type": user_type})
     print(f"Token generated: {token[:20]}...")
     return {"token": token}
+

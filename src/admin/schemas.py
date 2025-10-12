@@ -1,7 +1,7 @@
 from pydantic import BaseModel, validator
 
 
-class UserRegister(BaseModel):
+class AdminRegister(BaseModel):
     username: str
     password: str
     email: str
@@ -40,7 +40,7 @@ class UserRegister(BaseModel):
         return v
 
 
-class UserLogin(BaseModel):
+class AdminLogin(BaseModel):
     username: str
     password: str
 
