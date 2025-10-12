@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: belimang-config
+  namespace: snake-production
+data:
+  # Application settings
+  APP_NAME: "BeliMang!"
+  DEBUG: "False"
+  JWT_EXPIRATION_MINUTES: "60"
+
+  # MinIO settings (non-sensitive)
+  MINIO_ENDPOINT: "minio-service:9000"
+  MINIO_SECURE: "false"
+  MINIO_BUCKET: "uploads"
+  MINIO_PUBLIC_URL: "http://minio-service:9001"
+
+  # Database settings (non-sensitive)
+  POSTGRES_DB: "belimang"

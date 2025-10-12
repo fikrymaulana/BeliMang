@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: belimang-app
+  namespace: snake-production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: belimang-app
+  template:
+    metadata:
+      labels:
+        app: belimang-app
+    spec:
+      containers:
+      - name: belimang-app
+        image: ghcr.io/fikrymaulana/snake-belimang:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: belimang-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: belimang-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: POSTGRES_DB
+        - name: DATABASE_URL
+          value: "postgresql://snakeoadmin:snakeoadmin@postgres-service:5432/belimang"
+        - name: APP_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: APP_NAME
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: DEBUG
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: belimang-secret
+              key: SECRET_KEY
+        - name: JWT_EXPIRATION_MINUTES
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: JWT_EXPIRATION_MINUTES
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: belimang-secret
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: belimang-secret
+              key: MINIO_SECRET_KEY
+        - name: MINIO_SECURE
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: MINIO_SECURE
+        - name: MINIO_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: MINIO_BUCKET
+        - name: MINIO_PUBLIC_URL
+          valueFrom:
+            configMapKeyRef:
+              name: belimang-config
+              key: MINIO_PUBLIC_URL
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1500m"
+          limits:
+            memory: "6Gi"
+            cpu: "2"
+        # Enhanced logging for resource debugging
+        env:
+        - name: RESOURCE_LOGGING
+          value: "true"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: MEMORY_LOGGING
+          value: "true"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: belimang-app-service
+  namespace: snake-production
+spec:
+  selector:
+    app: belimang-app
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: belimang-app-loadbalancer
+  namespace: snake-production
+spec:
+  selector:
+    app: belimang-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+  - name: https
+    port: 443
+    targetPort: 8000
+  type: LoadBalancer
