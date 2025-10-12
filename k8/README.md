@@ -37,28 +37,9 @@ The deployment consists of:
 
 The application uses `psycopg2-binary` for PostgreSQL connectivity, which is optimized for container deployments and doesn't require PostgreSQL development headers.
 
-## Quick Start
+## Deployment
 
 1. **Build and deploy everything:**
-   ```bash
-   chmod +x deploy.sh
-   ./deploy.sh
-   ```
-
-2. **Check deployment status:**
-   ```bash
-   kubectl get pods -n snake-production
-   kubectl get services -n snake-production
-   ```
-
-3. **Get the load balancer IP:**
-   ```bash
-   kubectl get services belimang-app-loadbalancer -n belimang
-   ```
-
-## Manual Deployment
-
-If you prefer manual deployment:
 
 ```bash
 # Apply in order
@@ -70,9 +51,18 @@ kubectl apply -f postgis-deployment.yaml
 kubectl apply -f minio-deployment.yaml
 kubectl apply -f app-deployment.yaml
 
-# Optional: Enable ingress
-kubectl apply -f ingress.yaml
 ```
+
+2. **Check deployment status:**
+   ```bash
+   kubectl get pods -n snake-production
+   kubectl get services -n snake-production
+   ```
+
+3. **Get the load balancer IP:**
+   ```bash
+   kubectl get services belimang-app-loadbalancer -n belimang
+   ```
 
 ## Configuration
 
