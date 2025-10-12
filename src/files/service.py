@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from io import BytesIO
 
@@ -34,22 +35,26 @@ class MinIOService:
             filename = f"{file_uuid}.{file_extension}"
 
             # Ensure bucket exists
-            self.ensure_bucket_exists()
+            await asyncio.to_thread(self.ensure_bucket_exists)
 
-            # Upload file
+            # Prepare file buffer
             file_buffer = BytesIO(file_data)
             file_buffer.seek(0)
 
-            self.client.put_object(
+            # Return the public URL immediately
+            url = f"https://{settings.minio_public_url}/{self.bucket_name}/{filename}"
+
+            # Upload file asynchronously in the background
+            asyncio.create_task(asyncio.to_thread(
+                self.client.put_object,
                 self.bucket_name,
                 filename,
                 file_buffer,
                 length=len(file_data),
                 content_type=f"image/{file_extension}",
-            )
+            ))
 
-            # Return the public URL
-            return f"https://{settings.minio_public_url}/{self.bucket_name}/{filename}"
+            return url
 
         except S3Error as e:
             print(f"Error uploading to MinIO: {e}")
